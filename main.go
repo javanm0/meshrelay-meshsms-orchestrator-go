@@ -8,6 +8,7 @@ import (
     "net/http"
     "os"
     "strings"
+    "sync"
     "time"
 )
 
@@ -17,6 +18,7 @@ var (
     smsApiEndpoint       = os.Getenv("SMS_API_ENDPOINT")
     processIntervalStr   = os.Getenv("PROCESS_INTERVAL")
     processInterval      time.Duration
+    processMutex         sync.Mutex
 )
 
 func init() {
@@ -93,6 +95,10 @@ func sendSMS(to, body, messageID string) error {
 }
 
 func processMessages() {
+    // Lock the mutex to prevent concurrent execution
+    processMutex.Lock()
+    defer processMutex.Unlock()
+
     messages, err := fetchMessages()
     if err != nil {
         log.Println("Error fetching messages, skipping processing")
@@ -123,6 +129,8 @@ func main() {
     defer ticker.Stop()
 
     for range ticker.C {
-        processMessages()
+        go func() {
+            processMessages()
+        }()
     }
 }
